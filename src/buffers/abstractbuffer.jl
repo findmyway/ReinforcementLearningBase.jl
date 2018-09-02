@@ -1,13 +1,12 @@
 abstract type AbstractBuffer end
 
-"Add data into buffer"
-function push! end
-
-"Check is the buffer full"
 function isfull end
+function capacity end
 
-"Support access by index"
+## methods below from Base also need to be extended
+function push! end
 function getindex end
-
-"Support view without copy"
 function view end
+function length end
+function empty! end
+function lastindex end

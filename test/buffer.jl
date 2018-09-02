@@ -3,6 +3,7 @@
 @testset "CircularSARDBuffer" begin
     buffer = CircularSARDBuffer(Matrix{Int}, Vector{Int}, Float64; capacity=3)
     @test isfull(buffer) == false
+    @test capacity(buffer) == 3
 
     push!(buffer, ([[1 2]; [3 4]], [0], 0.0, false))
     push!(buffer, ([[1 2]; [3 4]], [1], 1.0, false))

@@ -1,9 +1,5 @@
-"The abstract buffer of State, Action, Reward and Done(SARD)"
+"The abstract buffer of turn info (SARD, State, Action, Reward and Done)"
 abstract type AbstractSARDBuffer <: AbstractBuffer end
-
-for s in [:capacity, :length, :size]
-    @eval $s(b::AbstractSARDBuffer) = $s(b.states)
-end
 
 for s in [:getindex, :view, :empty!]
     @eval $s(b::AbstractSARDBuffer, args...) = ($s(b.states, args...),
@@ -12,7 +8,8 @@ for s in [:getindex, :view, :empty!]
                                                 $s(b.done, args...))
 end
 
-lastindex(b::AbstractBuffer) = length(b)
+lastindex(b::AbstractSARDBuffer) = length(b)
+length(b::AbstractSARDBuffer) = length(b.states)
 
 ########################################
 ## CircularBuffer
@@ -48,6 +45,7 @@ function push!(b::CircularSARDBuffer{Ts, Ta, Tr}, sard::Tuple{Ts, Ta, Tr, Bool})
 end
 
 isfull(b::CircularSARDBuffer) = isfull(b.states)
+capacity(b::CircularSARDBuffer) = capacity(b.states)
 
 ########################################
 ## EpisodeSARDBuffer
@@ -65,7 +63,10 @@ end
 
 EpisodeSARDBuffer(ts::Type{Ts}, ta::Type{Ta}, tr::Type{Tr})  where Ts where Ta where Tr = EpisodeSARDBuffer(Vector{Ts}(), Vector{Ta}(), Vector{Tr}(), Vector{Bool}())
 
-"Push turn info into the buffer. If last turn is the end of an episode, empty the buffer first."
+"""
+Push turn info(SARD, State, Action, Reward and Done) into the buffer.
+If last turn is the end of an episode, empty the buffer first."
+"""
 function push!(b::EpisodeSARDBuffer{Ts, Ta, Tr}, sard::Tuple{Ts, Ta, Tr, Bool}) where Ts where Ta where Tr
     s, a, r, d = sard
     if length(b.done) > 0 && b.done[end]
@@ -78,3 +79,4 @@ function push!(b::EpisodeSARDBuffer{Ts, Ta, Tr}, sard::Tuple{Ts, Ta, Tr, Bool}) 
 end
 
 isfull(b::EpisodeSARDBuffer) = false
+capacity(b::EpisodeSARDBuffer) = Inf
