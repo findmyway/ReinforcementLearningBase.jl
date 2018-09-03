@@ -2,7 +2,8 @@ mutable struct CircularArrayBuffer{T, N} <: AbstractArray{T, N}
     buffer::Array{T, N}
     first::Int
     length::Int
-    CircularArrayBuffer{T}(capacity::Int, dims::Tuple{Vararg{Int}}) where T = new{T, length(dims)+1}(Array{T}(undef, dims..., capacity), 1, 0)
+    stepsize::Int
+    CircularArrayBuffer{T}(capacity::Int, dims::Tuple{Vararg{Int}}) where T = new{T, length(dims)+1}(Array{T}(undef, dims..., capacity), 1, 0, *(dims...))
 end
 
 size(cb::CircularArrayBuffer{T, N}) where {T, N} = (size(cb.buffer)[1:N-1]..., cb.length)
@@ -40,7 +41,8 @@ Add an element to the back and overwrite front if full.
     else
         cb.length += 1
     end
-    cb.buffer[((:) for _ in 1:ndims(cb.buffer)-1)..., _buffer_index(cb, cb.length)] = data
+    nxt_idx = _buffer_index(cb, cb.length)
+    cb.buffer[cb.stepsize * (nxt_idx - 1) + 1: cb.stepsize * nxt_idx] = data
     cb
 end
 
