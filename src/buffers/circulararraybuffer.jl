@@ -5,9 +5,11 @@ mutable struct CircularArrayBuffer{T, N} <: AbstractArray{T, N}
     CircularArrayBuffer{T}(capacity::Int, dims::Tuple{Vararg{Int}}) where T = new{T, length(dims)+1}(Array{T}(undef, dims..., capacity), 1, 0)
 end
 
-size(cb::CircularArrayBuffer) = (size(cb.buffer)[1 : ndims(cb.buffer)-1]..., cb.length)
-getindex(cb::CircularArrayBuffer, I::Vararg{Int, N}) where N = getindex(cb.buffer, I[1:N-1]...,  _buffer_index(cb, I[end]))
-setindex!(cb::CircularArrayBuffer, v, I::Vararg{Int, N}) where N = setindex!(cb.buffer, v, I[1:N-1]...,  _buffer_index(cb, I[end]))
+size(cb::CircularArrayBuffer{T, N}) where {T, N} = (size(cb.buffer)[1:N-1]..., cb.length)
+getindex(cb::CircularArrayBuffer{T, N}, i::Int) where {T, N} = getindex(cb.buffer, [(:) for _ in 1 : N-1]...,  _buffer_index(cb, i))
+getindex(cb::CircularArrayBuffer{T, N}, I::Vararg{Int, N}) where {T, N} = getindex(cb.buffer, I[1:N-1]...,  _buffer_index(cb, I[end]))
+setindex!(cb::CircularArrayBuffer{T, N}, v, i::Int) where {T, N} = setindex!(cb.buffer, v, [(:) for _ in 1 : N-1]...,  _buffer_index(cb, i))
+setindex!(cb::CircularArrayBuffer{T, N}, v, I::Vararg{Int, N}) where {T, N} = setindex!(cb.buffer, v, I[1:N-1]...,  _buffer_index(cb, I[end]))
 
 """"
     capacity(cb)
