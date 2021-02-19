@@ -78,6 +78,9 @@ Super type of all reinforcement learning environments.
 """
 @api abstract type AbstractEnv end
 
+@api abstract type AbstractEnvWrapper <: AbstractEnv end
+Base.getindex(w::AbstractEnvWrapper) = getfield(w, :env)
+
 abstract type AbstractEnvStyle end
 
 #####
@@ -121,7 +124,7 @@ Number of agents involved in the `env`. Possible returns are:
 - [`SINGLE_AGENT`](@ref). This is the default return.
 - [`MultiAgent`][@ref].
 """
-@env_api NumAgentStyle(env::T) where {T<:AbstractEnv} = NumAgentStyle(T)
+@api NumAgentStyle(env::T) where {T<:AbstractEnv} = NumAgentStyle(T)
 NumAgentStyle(env::Type{<:AbstractEnv}) = SINGLE_AGENT
 
 #####
@@ -149,7 +152,7 @@ not. Possible returns are:
 - [`SEQUENTIAL`](@ref). This is the default return.
 - [`SIMULTANEOUS`](@ref).
 """
-@env_api DynamicStyle(env::T) where {T<:AbstractEnv} = DynamicStyle(T)
+@api DynamicStyle(env::T) where {T<:AbstractEnv} = DynamicStyle(T)
 DynamicStyle(::Type{<:AbstractEnv}) = SEQUENTIAL
 
 #####
@@ -173,7 +176,7 @@ abstract type AbstractInformationStyle <: AbstractEnvStyle end
 Distinguish environments between [`PERFECT_INFORMATION`](@ref) and
 [`IMPERFECT_INFORMATION`](@ref). [`IMPERFECT_INFORMATION`](@ref) is returned by default.
 """
-@env_api InformationStyle(env::T) where {T<:AbstractEnv} = InformationStyle(T)
+@api InformationStyle(env::T) where {T<:AbstractEnv} = InformationStyle(T)
 InformationStyle(::Type{<:AbstractEnv}) = IMPERFECT_INFORMATION
 
 #####
@@ -228,7 +231,7 @@ Specify which role the chance plays in the `env`. Possible returns are:
 - [`EXPLICIT_STOCHASTIC`](@ref)
 - [`SAMPLED_STOCHASTIC`](@ref)
 """
-@env_api ChanceStyle(env::T) where {T<:AbstractEnv} = ChanceStyle(T)
+@api ChanceStyle(env::T) where {T<:AbstractEnv} = ChanceStyle(T)
 ChanceStyle(::Type{<:AbstractEnv}) = STOCHASTIC
 
 #####
@@ -257,7 +260,7 @@ Possible values are [`STEP_REWARD`](@ref) (the default one) or
     we may have some a more efficient implementation for environments of
     [`TERMINAL_REWARD`](@ref) style.
 """
-@env_api RewardStyle(env::T) where {T<:AbstractEnv} = RewardStyle(T)
+@api RewardStyle(env::T) where {T<:AbstractEnv} = RewardStyle(T)
 RewardStyle(::Type{<:AbstractEnv}) = STEP_REWARD
 
 #####
@@ -293,7 +296,7 @@ Specify the utility style in multi-agent environments. Possible values are:
 - [CONSTANT_SUM](@ref)
 - [IDENTICAL_UTILITY](@ref)
 """
-@env_api UtilityStyle(env::T) where {T<:AbstractEnv} = UtilityStyle(T)
+@api UtilityStyle(env::T) where {T<:AbstractEnv} = UtilityStyle(T)
 UtilityStyle(::Type{<:AbstractEnv}) = GENERAL_SUM
 
 #####
@@ -319,7 +322,7 @@ For environments of discrete actions, specify whether the current state of `env`
 contains a full action set or a minimal action set. By default the
 [`MINIMAL_ACTION_SET`](@ref) is returned.
 """
-@env_api ActionStyle(env::T) where {T<:AbstractEnv} = ActionStyle(T)
+@api ActionStyle(env::T) where {T<:AbstractEnv} = ActionStyle(T)
 ActionStyle(::Type{<:AbstractEnv}) = MINIMAL_ACTION_SET
 
 #####
@@ -364,12 +367,12 @@ Or a tuple contains several of the above ones.
 
 This is useful for environments which provide more than one kind of state.
 """
-@env_api StateStyle(env::AbstractEnv) = Observation{Any}()
+@api StateStyle(env::AbstractEnv) = Observation{Any}()
 
 """
 Specify the defalt state style when calling `state(env)`.
 """
-@env_api DefaultStateStyle(env::AbstractEnv) = DefaultStateStyle(StateStyle(env))
+@api DefaultStateStyle(env::AbstractEnv) = DefaultStateStyle(StateStyle(env))
 DefaultStateStyle(ss::AbstractStateStyle) = ss
 DefaultStateStyle(ss::Tuple{Vararg{<:AbstractStateStyle}}) = first(ss)
 
@@ -413,7 +416,7 @@ Get the action distribution of chance player.
     Only valid for environments of [`EXPLICIT_STOCHASTIC`](@ref) style. The
     current player of `env` must be the chance player.
 """
-@env_api prob(env::AbstractEnv, player = chance_player(env))
+@api prob(env::AbstractEnv, player = chance_player(env))
 
 """
     action_space(env, player=current_player(env))
@@ -421,7 +424,7 @@ Get the action distribution of chance player.
 Get all available actions from environment. See also:
 [`legal_action_space`](@ref)
 """
-@multi_agent_env_api action_space(env::AbstractEnv, player = current_player(env))
+@api action_space(env::AbstractEnv, player = current_player(env))
 
 """
     legal_action_space(env, player=current_player(env))
@@ -429,7 +432,7 @@ Get all available actions from environment. See also:
 For environments of [`MINIMAL_ACTION_SET`](@ref), the result is the same with
 [`action_space`](@ref).
 """
-@multi_agent_env_api legal_action_space(env::AbstractEnv, player = current_player(env)) =
+@api legal_action_space(env::AbstractEnv, player = current_player(env)) =
     legal_action_space(ActionStyle(env), env, player)
 
 legal_action_space(::MinimalActionSet, env, player) = action_space(env)
@@ -439,7 +442,7 @@ legal_action_space(::MinimalActionSet, env, player) = action_space(env)
 
 Required for environments of [`FULL_ACTION_SET`](@ref).
 """
-@multi_agent_env_api legal_action_space_mask(env::AbstractEnv, player = current_player(env))
+@api legal_action_space_mask(env::AbstractEnv, player = current_player(env))
 
 """
     state(env, style=[DefaultStateStyle(env)], player=[current_player(env)])
@@ -449,7 +452,7 @@ assume an `AbstractArray` is returned. For environments with many different stat
 provided (inner state, information state, etc), users need to provide `style`
 to declare which kind of state they want.
 """
-@multi_agent_env_api state(env::AbstractEnv) = state(env, DefaultStateStyle(env))
+@api state(env::AbstractEnv) = state(env, DefaultStateStyle(env))
 state(env::AbstractEnv, ss::AbstractStateStyle) = state(env, ss, current_player(env))
 state(env::AbstractEnv, player) = state(env, DefaultStateStyle(env), player)
 
@@ -458,7 +461,7 @@ state(env::AbstractEnv, player) = state(env, DefaultStateStyle(env), player)
     
 Describe all possible states.
 """
-@multi_agent_env_api state_space(env::AbstractEnv) =
+@api state_space(env::AbstractEnv) =
     state_space(env, DefaultStateStyle(env))
 state_space(env::AbstractEnv, ss::AbstractStateStyle) =
     state_space(env, ss, current_player(env))
@@ -473,46 +476,46 @@ be returned. (See also [`chance_player`](@ref)) For [SIMULTANEOUS](@ref)
 environments, a *simultaneous player* is always returned. (See also
 [`simultaneous_player`](@ref)).
 """
-@env_api current_player(env::AbstractEnv) = DEFAULT_PLAYER
+@api current_player(env::AbstractEnv) = DEFAULT_PLAYER
 
 """
     chance_player(env)
 
 Only valid for environments with a chance player.
 """
-@env_api chance_player(env::AbstractEnv) = CHANCE_PLAYER
+@api chance_player(env::AbstractEnv) = CHANCE_PLAYER
 
 """
     simultaneous_player(env)
 
 Only valid for environments of [`SIMULTANEOUS`](@ref) style.
 """
-@env_api simultaneous_player(env) = SIMULTANEOUS_PLAYER
+@api simultaneous_player(env) = SIMULTANEOUS_PLAYER
 
 """
     spectator_player(env)
 
 Used in imperfect multi-agent environments.
 """
-@env_api spectator_player(env::AbstractEnv)
+@api spectator_player(env::AbstractEnv)
 
-@env_api players(env::AbstractEnv) = (DEFAULT_PLAYER,)
+@api players(env::AbstractEnv) = (DEFAULT_PLAYER,)
 
 "Reset the internal state of an environment"
-@env_api reset!(env::AbstractEnv)
+@api reset!(env::AbstractEnv)
 
 "Set the seed of internal rng"
-@env_api seed!(env::AbstractEnv, seed)
+@api seed!(env::AbstractEnv, seed)
 
 """
     is_terminated(env, player=current_player(env))
 """
-@env_api is_terminated(env::AbstractEnv)
+@api is_terminated(env::AbstractEnv)
 
 """
     reward(env, player=current_player(env))
 """
-@multi_agent_env_api reward(env::AbstractEnv, player = current_player(env))
+@api reward(env::AbstractEnv, player = current_player(env))
 
 """
     child(env::AbstractEnv, action)

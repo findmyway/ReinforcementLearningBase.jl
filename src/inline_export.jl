@@ -2,64 +2,96 @@
 # - https://github.com/dalum/InlineExports.jl/blob/master/src/InlineExports.jl
 # - https://github.com/QuantumBFS/YaoBase.jl/blob/master/src/utils/interface.jl
 
-# TODO: use MLStyle.jl instead!
-
-const API = []
-const ENV_API = []
-const MULTI_AGENT_ENV_API = []
+using MLStyle
 
 macro api(ex)
-    interfacem(__module__, __source__, ex, API)
+    handle(__module__, __source__, ex)
 end
 
-macro env_api(ex)
-    interfacem(__module__, __source__, ex, ENV_API)
-end
-
-macro multi_agent_env_api(ex)
-    interfacem(__module__, __source__, ex, MULTI_AGENT_ENV_API)
-end
-
-function interfacem(__module__::Module, __source__::LineNumberNode, ex::Expr, store)
-    name, is_body_missing = handle(ex)
-    if name === nothing
-        :(error("unknown expression"))
-    else
-        push!(store, name)
-        if is_body_missing
-            quote
-                export $(esc(name))
-                Core.@__doc__ $(esc(ex)) = error("method not implemented")
-            end
-        else
-            quote
-                export $(esc(name))
-                Core.@__doc__ $(esc(ex))
-            end
-        end
+function handle(__module__::Module, __source__::LineNumberNode, expr)
+    name = extract_name(expr)
+    expr = add_missing_body(expr)
+    expr_fw = forward_wrapper(expr)
+    quote
+        export $(esc(name))
+        Core.@__doc__ $(esc(expr))
+        $(esc(expr_fw)) === nothing || Core.@__doc__ $(esc(expr_fw))
     end
 end
 
-handle(ex) = extract_name(ex), is_body_missing(ex)
+function add_missing_body(expr)
+    @match expr begin
+        Expr(:call, args...) => Expr(
+            :function,
+            expr,
+            :(error("methods not implemented!!!"))
+            )
+        _ => expr
+    end
+end
 
-extract_name(::Any) = nothing
-extract_name(x::Symbol) = x
-extract_name(x::QuoteNode) = x.value
-extract_name(ex::Expr) = extract_name(Val(ex.head), ex)
-extract_name(::Val{:abstract}, ex) = extract_name(ex.args[1])
-extract_name(::Val{:(=)}, ex) = extract_name(ex.args[1])
-extract_name(::Val{:call}, ex) = extract_name(ex.args[1])
-extract_name(::Val{:(::)}, ex) = extract_name(ex.args[2])
-extract_name(::Val{:(<:)}, ex) = extract_name(ex.args[1])
-extract_name(::Val{:curly}, ex) = extract_name(ex.args[1])
-extract_name(::Val{:.}, ex) = extract_name(ex.args[2])
-extract_name(::Val{:where}, ex) = extract_name(ex.args[1])
-extract_name(::Val{:function}, ex) = extract_name(ex.args[1])
-extract_name(::Val{:struct}, ex) = extract_name(ex.args[2])
-extract_name(::Val{:const}, ex) = extract_name(ex.args[1])
+function extract_name(e)
+    # dump(e)
+    @match e begin
+        ::Symbol                        => e
+        Expr(:(=), fn, body, _...)      => extract_name(fn)
+        Expr(:call, fn, body, _...)     => extract_name(fn)
+        Expr(:function, fn, body, _...) => extract_name(fn)
+        Expr(:(::), fn, ft, _...)       => extract_name(ft)  # !!! not fn here
+        Expr(:struct, _, name, _...)    => extract_name(name)
+        Expr(:(<:), sub, super, _...)   => extract_name(sub)
+        Expr(:curly, t, ps, _...)       => extract_name(t)
+        Expr(:abstract, name, _...)     => extract_name(name)
+        Expr(:const, assn, _...)        => extract_name(assn)
+        Expr(:where, sig, _...)         => extract_name(sig)
+        Expr(expr_type,  _...)          => error("Can't extract name from ",
+                                                expr_type, " expression:\n",
+                                                "    $e\n")
+    end
+end
 
-is_body_missing(::Any) = false
+function forward_wrapper(e)
+    # dump(e)
+    if _has_AbstractEnv(e)
+        @match e begin
+            Expr(:function, fn, body) => Expr(
+                :function,
+                _replace(fn),
+                _forward(fn)
+            )
+            Expr(:(=), fn, body) => Expr(
+                :function,
+                _replace(fn),
+                _forward(fn)
+            )
+        end
+    else
+        nothing
+    end
+end
 
-is_body_missing(ex::Expr) = is_body_missing(Val(ex.head), ex)
-is_body_missing(::Any, ::Any) = false
-is_body_missing(::Val{:call}, ::Any) = true
+function _has_AbstractEnv(e)
+    # dump(e)
+    @match e begin
+        Expr(:function, fn, body) => _has_AbstractEnv(fn)
+        Expr(:(=), fn, body) => _has_AbstractEnv(fn)
+        Expr(:where, sig, guard) => _has_AbstractEnv(sig) || _has_AbstractEnv(guard)
+        Expr(:call, args...) => any(_has_AbstractEnv.(args))
+        Expr(:(::), _, t) => _has_AbstractEnv(t)
+        Expr(:(<:), _, t) => _has_AbstractEnv(t)
+        Expr(:curly, :Type, t) => _has_AbstractEnv(t)
+        Expr(:(<:), :AbstractEnv) => true
+        :AbstractEnv => true
+        ::Symbol => false
+    end
+end
+
+function _replace(e)
+    # TODO
+    e
+end
+
+function _forward(e)
+    # TODO
+    e
+end
